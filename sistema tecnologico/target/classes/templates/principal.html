@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechStore - Catálogo y Servicios</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="page-dashboard">
+
+    <nav class="navbar">
+        <div class="brand">
+            <div class="brand-icon">T</div>
+            <span>TechStore</span>
+        </div>
+        <div class="nav-links">
+            <a href="#catalogo">Catálogo</a>
+            <a href="#admin-section" sec:authorize="hasRole('ADMIN')">Gestionar</a>
+            <a href="#servicios">Servicios</a>
+            <a href="#contacto">Ubicación y Contacto</a>
+            <a th:href="@{/}" class="btn-logout">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Bienvenido a TechStore</h1>
+            <p>Tu tienda de confianza en tecnología, laptops, periféricos y soporte técnico especializado.</p>
+        </div>
+    </header>
+
+    <section class="features-wrapper">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">💻</div>
+                <div>
+                    <h4>Garantía Asegurada</h4>
+                    <p>Todos los equipos con 12 meses de garantía</p>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚚</div>
+                <div>
+                    <h4>Envíos a Todo el Perú</h4>
+                    <p>Entrega rápida en 24/48 horas</p>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛠️</div>
+                <div>
+                    <h4>Soporte Técnico</h4>
+                    <p>Especialistas en armado y reparación</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="admin-container" id="admin-section" sec:authorize="hasRole('ADMIN')">
+        <div class="admin-card">
+            <h3 th:text="${nuevoProducto.id != null} ? 'Editar Producto (ID: ' + ${nuevoProducto.id} + ')' : 'Registrar Nuevo Producto'">Registrar Producto</h3>
+            <form th:action="@{/productos/guardar}" th:object="${nuevoProducto}" method="post" class="admin-form">
+                <input type="hidden" th:field="*{id}" />
+                <div class="form-group">
+                    <label>Nombre:</label>
+                    <input type="text" th:field="*{nombre}" placeholder="Nombre del equipo" required>
+                </div>
+                <div class="form-group">
+                    <label>Descripción:</label>
+                    <input type="text" th:field="*{descripcion}" placeholder="Detalles técnicos" required>
+                </div>
+                <div class="form-group">
+                    <label>Precio (S/):</label>
+                    <input type="number" step="0.01" th:field="*{precio}" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label>Stock:</label>
+                    <input type="number" th:field="*{stock}" placeholder="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Categoría:</label>
+                    <select th:field="*{categoria}" required>
+                        <option value="">Seleccione...</option>
+                        <option th:each="cat : ${categorias}" th:value="${cat.id}" th:text="${cat.nombre}"></option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-guardar" th:text="${nuevoProducto.id != null} ? 'Actualizar' : 'Guardar'">Guardar</button>
+            </form>
+        </div>
+    </section>
+
+    <main class="catalog-container" id="catalogo">
+        <div class="catalog-header-block">
+            <div class="catalog-title-box">
+                <span class="section-subtitle">NUESTRO CATÁLOGO</span>
+                <h2 class="section-title">Equipos y Accesorios Disponibles</h2>
+            </div>
+
+            <div class="search-box-large">
+                <input type="text" id="searchInput" placeholder="Buscar producto por nombre o descripción..." onkeyup="filtrarProductos()">
+            </div>
+
+            <form th:action="@{/productos/filtrar}" method="get" class="filter-precio-form-row">
+                <span class="filter-label">Rango de precio:</span>
+                <input type="number" step="0.01" name="min" placeholder="Mínimo S/." class="filter-precio-input" required>
+                <span class="filter-precio-separator">-</span>
+                <input type="number" step="0.01" name="max" placeholder="Máximo S/." class="filter-precio-input" required>
+                
+                <button type="submit" class="btn-filtro-igual btn-filtrar">Filtrar</button>
+                <a th:href="@{/principal}" class="btn-filtro-igual btn-ver-todos">Ver Todos</a>
+            </form>
+        </div>
+
+        <div class="filter-container">
+            <button class="filter-badge active" onclick="filtrarCategoria('todas', this)">Todas</button>
+            <button class="filter-badge" 
+                    th:each="cat : ${categorias}" 
+                    th:text="${cat.nombre}" 
+                    th:attr="data-catname=${cat.nombre}"
+                    onclick="filtrarCategoriaPorBoton(this)">
+                Categoría
+            </button>
+        </div>
+
+        <div class="products-grid" id="productsGrid">
+            <div class="product-card" th:each="prod : ${productos}" 
+                   th:data-categoria="${prod.categoria != null ? prod.categoria.nombre : 'general'}">
+                <div class="product-body">
+                    <span class="category-tag" th:text="${prod.categoria != null ? prod.categoria.nombre : 'General'}">Categoría</span>
+                    <h3 class="product-name" th:text="${prod.nombre}">Nombre del Producto</h3>
+                    <p class="product-desc" th:text="${prod.descripcion}">Descripción del producto asignado en base de datos.</p>
+                </div>
+                <div class="product-footer">
+                    <div class="price-box">
+                        <span class="product-price" th:text="'S/ ' + ${#numbers.formatDecimal(prod.precio, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
+                        <span class="product-stock" th:text="${prod.stock} + ' disponibles'">0 disponibles</span>
+                    </div>
+                    <div class="card-actions" sec:authorize="hasRole('ADMIN')">
+                        <a th:href="@{/productos/editar/{id}(id=${prod.id})}" class="btn-editar">Editar</a>
+                        <a th:href="@{/productos/eliminar/{id}(id=${prod.id})}" class="btn-eliminar" onclick="return confirm('¿Seguro que deseas eliminar este producto?');">Eliminar</a>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(productos)}" class="empty-state">
+                <p>No se encontraron productos registrados en la base de datos.</p>
+            </div>
+        </div>
+    </main>
+
+    <section class="services-section" id="servicios">
+        <div class="section-container">
+            <span class="section-subtitle">LO QUE OFRECEMOS</span>
+            <h2 class="section-title">Nuestros Servicios Especializados</h2>
+            <div class="services-grid">
+                <div class="service-box">
+                    <div class="service-icon">🔧</div>
+                    <h3>Mantenimiento Preventivo</h3>
+                    <p>Limpieza profunda de componentes, cambio de pasta térmica de alto rendimiento y optimización de sistema operativo.</p>
+                </div>
+                <div class="service-box">
+                    <div class="service-icon">⚙️</div>
+                    <h3>Ensamblaje a Medida</h3>
+                    <p>Asesoría en la selección de piezas y armado profesional de computadoras para Gaming, Arquitectura y Edición.</p>
+                </div>
+                <div class="service-box">
+                    <div class="service-icon">💻</div>
+                    <h3>Reparación de Laptops</h3>
+                    <p>Diagnóstico de fallas en placa madre, cambio de pantallas, teclados, baterías y actualización a SSD.</p>
+                </div>
+                <div class="service-box">
+                    <div class="service-icon">🌐</div>
+                    <h3>Redes e Instalación</h3>
+                    <p>Configuración de redes locales, routers Wi-Fi mesh y estructurado de cableado para oficinas y hogares.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="contact-section" id="contacto">
+        <div class="section-container">
+            <span class="section-subtitle">ENCUÉNTRANOS</span>
+            <h2 class="section-title">Ubicación y Contacto</h2>
+            
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <div class="info-item">
+                        <span class="info-icon">📍</span>
+                        <div>
+                            <h4>Dirección Principal</h4>
+                            <p>Av. Garcilaso de la Vega 1348, Tienda 204, Cercado de Lima, Perú</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">📞</span>
+                        <div>
+                            <h4>Central Telefónica & WhatsApp</h4>
+                            <p>+51 987 654 321 / (01) 425-8900</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">✉️</span>
+                        <div>
+                            <h4>Correo Electrónico</h4>
+                            <p>ventas@sistematecnologico.com</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">⏰</span>
+                        <div>
+                            <h4>Horario de Atención</h4>
+                            <p>Lunes a Sábado: 9:00 AM - 8:00 PM</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-card">
+                    <div class="map-placeholder">
+                        <span style="font-size: 3.5rem;">🗺️</span>
+                        <h4>Atención Presencial y Envíos</h4>
+                        <p>Visita nuestro local físico para probar tus equipos antes de comprar o solicita envío a domicilio.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2026 TechStore - Sistema Tecnológico. Todos los derechos reservados.</p>
+    </footer>
+
+    <script th:src="@{/js/script.js}"></script>
+</body>
+</html>
